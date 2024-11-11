@@ -15,17 +15,14 @@ type App struct {
 	config Config
 }
 
-func New() *App {
-
-	config := LoadConfig()
-
+func New(config Config) *App {
 	app := &App{
-		config: config,
 		rdb: redis.NewClient(&redis.Options{
 			Addr:     config.RedisAddress,  // Host and Port
 			Password: config.RedisPassword, // Password
 			DB:       0,                    // Default DB
 		}),
+		config: config,
 	}
 
 	app.loadRoutes()
@@ -35,15 +32,13 @@ func New() *App {
 
 func (a *App) Start(ctx context.Context) error {
 	server := &http.Server{
-		Addr:    ":3000",
+		Addr:    fmt.Sprintf(":%d", a.config.ServerPort),
 		Handler: a.router,
 	}
 
-	// Test the Redis connection
-	// ctx := context.Background()
 	err := a.rdb.Ping(ctx).Err()
 	if err != nil {
-		fmt.Println("Failed to connect to Redis:", err)
+		return fmt.Errorf("failed to connect to redis: %w", err)
 	} else {
 		fmt.Println("Successfully connected to Redis!")
 	}
@@ -54,14 +49,14 @@ func (a *App) Start(ctx context.Context) error {
 		}
 	}()
 
-	fmt.Println("Starting Server")
+	fmt.Println("Starting server")
 
 	ch := make(chan error, 1)
 
 	go func() {
-		err := server.ListenAndServe()
+		err = server.ListenAndServe()
 		if err != nil {
-			ch <- fmt.Errorf("failed to start server : %w", err)
+			ch <- fmt.Errorf("failed to start server: %w", err)
 		}
 		close(ch)
 	}()
@@ -70,8 +65,10 @@ func (a *App) Start(ctx context.Context) error {
 	case err = <-ch:
 		return err
 	case <-ctx.Done():
-		timeoutCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		timeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
-		return server.Shutdown(timeoutCtx)
+
+		return server.Shutdown(timeout)
 	}
+
 }

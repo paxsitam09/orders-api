@@ -1,29 +1,22 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"os"
+	"os/signal"
+
+	"github.com/paxsitam09/orders-api/application"
 )
 
 func main() {
-	server := &http.Server{
-		Addr:    ":3000",
-		Handler: http.HandlerFunc(basicHandler),
-	}
+	app := application.New()
 
-	err := server.ListenAndServe()
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	err := app.Start(ctx)
 	if err != nil {
-		fmt.Println("failed to listen to server")
-	}
-}
-
-func basicHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		if r.URL.Path == "/foo" {
-
-		}
-	}
-
-	if r.Method == http.MethodPost {
+		fmt.Println("failed to start app:", err)
 	}
 }

@@ -12,18 +12,24 @@ import (
 type App struct {
 	router http.Handler
 	rdb    *redis.Client
+	config Config
 }
 
 func New() *App {
 
+	config := LoadConfig()
+
 	app := &App{
-		router: loadRoutes(),
+		config: config,
 		rdb: redis.NewClient(&redis.Options{
-			Addr:     "redis-10670.c340.ap-northeast-2-1.ec2.redns.redis-cloud.com:10670", // Host and Port
-			Password: "ocknMiTUWBO52WZRaNBfm8lA2ByPrn5s",                                  // Password
-			DB:       0,                                                                   // Default DB
+			Addr:     config.RedisAddress,  // Host and Port
+			Password: config.RedisPassword, // Password
+			DB:       0,                    // Default DB
 		}),
 	}
+
+	app.loadRoutes()
+
 	return app
 }
 
